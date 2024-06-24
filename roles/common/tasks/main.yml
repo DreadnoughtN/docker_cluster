@@ -1,0 +1,50 @@
+---
+# Определяем пакетный менеджер и команды для установки Docker в зависимости от дистрибутива
+- name: Set package manager and docker install commands
+  set_fact:
+    package_manager: "{{ 'apt' if ansible_facts['os_family'] == 'Debian' else 'yum' }}"
+    docker_repo: "{{ 'deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable' if ansible_facts['os_family'] == 'Debian' else 'https://download.docker.com/linux/centos/docker-ce.repo' }}"
+    docker_gpg_key: "{{ 'https://download.docker.com/linux/ubuntu/gpg' if ansible_facts['os_family'] == 'Debian' else 'https://download.docker.com/linux/centos/gpg' }}"
+    docker_pkg: "{{ 'docker-ce' if ansible_facts['os_family'] == 'Debian' else 'docker-ce' }}"
+
+# Установка необходимых пакетов
+- name: Install required packages
+  package:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ ['apt-transport-https', 'ca-certificates', 'curl', 'software-properties-common'] if ansible_facts['os_family'] == 'Debian' else ['yum-utils', 'device-mapper-persistent-data', 'lvm2'] }}"
+  when: ansible_facts['os_family'] in ['Debian', 'RedHat']
+
+# Добавление Docker GPG ключа
+- name: Add Docker GPG key
+  apt_key:
+    url: "{{ docker_gpg_key }}"
+    state: present
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Add Docker repository
+  apt_repository:
+    repo: "{{ docker_repo }}"
+    state: present
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Add Docker repository
+  yum_repository:
+    name: docker-ce
+    description: Docker CE Stable - x86_64
+    baseurl: "{{ docker_repo }}"
+    gpgcheck: yes
+    gpgkey: "{{ docker_gpg_key }}"
+    enabled: yes
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Install Docker
+  package:
+    name: "{{ docker_pkg }}"
+    state: present
+
+- name: Ensure Docker service is running
+  service:
+    name: docker
+    state: started
+    enabled: yes

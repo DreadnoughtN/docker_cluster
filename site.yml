@@ -1,0 +1,15 @@
+---
+- hosts: all
+  become: yes
+  roles:
+    - common
+
+- hosts: registry_servers
+  become: yes
+  roles:
+    - registry
+
+- hosts: haproxy_server
+  become: yes
+  roles:
+    - haproxy
